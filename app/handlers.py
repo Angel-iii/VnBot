@@ -3,19 +3,37 @@ from aiogram.types import Message, CallbackQuery, InputMediaPhoto
 from aiogram.filters import CommandStart
 import app.keyboards as kb
 
+class Bot:
+    def __init__(self):
+        self.router = Router()
+        self.selected_buttons = set()
+        self.media_groups = dict()
+
+
+
 router = Router()
 group_id = -1002395670506  # ID группы
 
 # Храним выбранные кнопки
+# сет используется т.к. нужно хранить укикальные кнопки т.е. без повторений
 selected_buttons = set()
 
+# Храним фотографии в медиагруппе на уровне модуля
+# ключ - integer номер группы
+# значение - list - список с объектами InputMedia
+groups_foto = Bot() # dict 
+
+
+# def - define - ключевое слово для функций
+# async def - ключевое слово для описания асихронных функций
+# await - async wait - мы ожидаем что на этой строчке будет долгоая операция которую ноужно будет ждать
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     await message.answer('Привет!')
     await message.reply('Как дела?')
 
-
+    
 @router.message(F.text == 'Каталог')
 async def catalog(message: Message):
     keyboard = kb.create_catalog_keyboard()
@@ -31,12 +49,6 @@ async def handle_category(callback: CallbackQuery):
     await callback.message.answer('Отправьте фото')
 
 
-# Храним фотографии в медиагруппе на уровне модуля
-media_groups = {}
-
-
-# Храним фотографии в медиагруппе на уровне модуля
-media_groups = {}
 
 @router.message(F.photo)
 async def handle_photo(message: Message):
@@ -44,16 +56,16 @@ async def handle_photo(message: Message):
 
     # Проверяем, является ли сообщение частью медиагруппы
     if message.media_group_id:
-        if message.media_group_id not in media_groups:
-            media_groups[message.media_group_id] = []
+        if message.media_group_id not in groups_foto.media_groups:
+            groups_foto.media_groups[message.media_group_id] = []
 
-        media_groups[message.media_group_id].append(InputMediaPhoto(media=message.photo[-1].file_id))
+        groups_foto.media_groups[message.media_group_id].append(InputMediaPhoto(media=message.photo[-1].file_id))
 
         # Если это последнее сообщение в медиагруппе
-        if len(media_groups[message.media_group_id]) > 1:
+        if len(groups_foto.media_groups[message.media_group_id]) > 1:
             try:
-                await bot.send_media_group(chat_id=group_id, media=media_groups[message.media_group_id])
-                del media_groups[message.media_group_id]
+                await bot.send_media_group(chat_id=group_id, media=groups_foto.media_groups[message.media_group_id])
+                del groups_foto.media_groups[message.media_group_id]
 
                 # Выводим клавиатуру только один раз после отправки альбома
                 await send_keyboard(message)
